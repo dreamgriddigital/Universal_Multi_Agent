@@ -2,15 +2,18 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 
-const agents = ["data", "developer", "research", "chat"];
+type Msg = { role: "user" | "bot"; text: string };
+
+const agents = ["data", "developer", "research", "chat"] as const;
+type Agent = (typeof agents)[number];
 
 export default function ChatArea() {
-  const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [agent, setAgent] = useState("data");
-  // Default ON so it uses /query out of the box
-  const [directMode, setDirectMode] = useState(true);
+  const [agent, setAgent] = useState<Agent>("data");
+  // directMode true = talk to /api/query as plain prompt; false = prefix with agent
+  const [directMode, setDirectMode] = useState<boolean>(true);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -20,41 +23,35 @@ export default function ChatArea() {
   const sendMessage = async () => {
     if (!userInput.trim()) return;
 
-    const userMsg = { role: "user", text: userInput };
+    const userMsg: Msg = { role: "user", text: userInput };
     setMessages((prev) => [...prev, userMsg]);
     setUserInput("");
     setIsLoading(true);
 
     try {
-      const endpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/query`;
-
-      // If not in direct mode, prefix the agent to the input text.
       const inputText = directMode ? userInput : `${agent} ${userInput}`;
 
-		const res = await fetch(`/api/query`, {
-		  method: "POST",
-		  headers: { "Content-Type": "application/json" },
-		  body: JSON.stringify({ input: inputText }), // inputText = user message or "data <msg>" etc.
-		});
+      const res = await fetch("/api/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: inputText }),
+      });
 
       if (!res.ok) {
         const errText = await res.text();
         throw new Error(errText || `HTTP ${res.status}`);
       }
 
-      const data = await res.json();
+      // response shape is { response: string }
+      const data = (await res.json()) as { response?: string; [k: string]: unknown };
       const botText =
-        data.response ||
-        data.answer ||
-        JSON.stringify(data, null, 2) ||
+        (typeof data.response === "string" && data.response) ||
         "⚠️ No response";
 
       setMessages((prev) => [...prev, { role: "bot", text: botText }]);
-    } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "bot", text: `⚠️ Error: ${err.message}` },
-      ]);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setMessages((prev) => [...prev, { role: "bot", text: `⚠️ Error: ${msg}` }]);
     } finally {
       setIsLoading(false);
     }
@@ -74,15 +71,11 @@ export default function ChatArea() {
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`mb-3 ${
-              msg.role === "user" ? "text-right" : "text-left"
-            }`}
+            className={`mb-3 ${msg.role === "user" ? "text-right" : "text-left"}`}
           >
             <div
               className={`inline-block px-3 py-2 rounded-lg ${
-                msg.role === "user"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-200 text-black"
+                msg.role === "user" ? "bg-blue-500 text-white" : "bg-gray-200 text-black"
               }`}
             >
               <ReactMarkdown>{msg.text}</ReactMarkdown>
@@ -97,11 +90,10 @@ export default function ChatArea() {
 
       {/* Controls */}
       <div className="mt-3 flex gap-2">
-        {/* Agent selector only matters when Direct AI is OFF */}
         {!directMode && (
           <select
             value={agent}
-            onChange={(e) => setAgent(e.target.value)}
+            onChange={(e) => setAgent(e.target.value as Agent)}
             className="border rounded p-2"
           >
             {agents.map((a) => (
@@ -112,7 +104,6 @@ export default function ChatArea() {
           </select>
         )}
 
-        {/* Direct mode toggle */}
         <label className="flex items-center gap-1 text-sm">
           <input
             type="checkbox"
@@ -122,7 +113,6 @@ export default function ChatArea() {
           Direct AI
         </label>
 
-        {/* Input */}
         <input
           className="flex-1 border rounded p-2"
           value={userInput}
@@ -131,7 +121,6 @@ export default function ChatArea() {
           placeholder="Type your message..."
         />
 
-        {/* Send button */}
         <button
           onClick={sendMessage}
           className="bg-green-500 text-white px-4 py-2 rounded"
