@@ -1,5 +1,3 @@
-export default nextConfig;
-
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -7,3 +5,5 @@ const nextConfig: NextConfig = {
   // DO NOT set: output: "export"
   // Keep this file otherwise minimal.
 };
+
+export default nextConfig;
