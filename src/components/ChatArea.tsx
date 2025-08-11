@@ -20,43 +20,42 @@ export default function ChatArea() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!userInput.trim()) return;
+ const sendMessage = async () => {
+  if (!userInput.trim()) return;
 
-    const userMsg: Msg = { role: "user", text: userInput };
-    setMessages((prev) => [...prev, userMsg]);
-    setUserInput("");
-    setIsLoading(true);
+  const userMsg: Msg = { role: "user", text: userInput };
+  setMessages((prev) => [...prev, userMsg]);
+  setUserInput("");
+  setIsLoading(true);
 
-    try {
-      const inputText = directMode ? userInput : `${agent} ${userInput}`;
+  try {
+    const inputText = directMode ? userInput : `${agent} ${userInput}`;
 
-		const res = await fetch("/api/query", {
-		  method: "POST",
-		  headers: { "Content-Type": "application/json" },
-		  body: JSON.stringify({ input: userMessage.text }),
-		});
+    const res = await fetch("/api/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input: inputText }), // ✅ FIXED LINE
+    });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || `HTTP ${res.status}`);
-      }
-
-      // response shape is { response: string }
-      const data = (await res.json()) as { response?: string; [k: string]: unknown };
-      const botText =
-        (typeof data.response === "string" && data.response) ||
-        "⚠️ No response";
-
-      setMessages((prev) => [...prev, { role: "bot", text: botText }]);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setMessages((prev) => [...prev, { role: "bot", text: `⚠️ Error: ${msg}` }]);
-    } finally {
-      setIsLoading(false);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || `HTTP ${res.status}`);
     }
-  };
 
+    const data = (await res.json()) as { response?: string };
+    const botText =
+      typeof data.response === "string" && data.response
+        ? data.response
+        : "⚠️ No response";
+
+    setMessages((prev) => [...prev, { role: "bot", text: botText }]);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    setMessages((prev) => [...prev, { role: "bot", text: `⚠️ Error: ${msg}` }]);
+  } finally {
+    setIsLoading(false);
+  }
+};
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
