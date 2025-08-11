@@ -31,11 +31,11 @@ export default function ChatArea() {
     try {
       const inputText = directMode ? userInput : `${agent} ${userInput}`;
 
-      const res = await fetch("/api", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: inputText }),
-      });
+		const res = await fetch("/api/query", {
+		  method: "POST",
+		  headers: { "Content-Type": "application/json" },
+		  body: JSON.stringify({ input: userMessage.text }),
+		});
 
       if (!res.ok) {
         const errText = await res.text();
