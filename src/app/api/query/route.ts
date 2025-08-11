@@ -1,26 +1,27 @@
-// File: src/app/api/query/route.ts
+// src/app/api/query/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY, // Uses value from .env.local
 });
 
 export async function POST(req: NextRequest) {
   try {
     const { input } = await req.json();
-    if (!input) {
-      return NextResponse.json({ error: "Missing input" }, { status: 400 });
-    }
 
-    const chatResponse = await openai.chat.completions.create({
-      model: "gpt-4",
+    const chatCompletion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: input }],
     });
 
-    const message = chatResponse.choices[0]?.message?.content || "⚠️ No response from OpenAI.";
-    return NextResponse.json({ response: message });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "OpenAI error" }, { status: 500 });
+    const response = chatCompletion.choices[0]?.message?.content ?? "No reply.";
+
+    return NextResponse.json({ response });
+  } catch (err) {
+    return NextResponse.json(
+      { error: "Something went wrong", details: String(err) },
+      { status: 500 }
+    );
   }
 }
