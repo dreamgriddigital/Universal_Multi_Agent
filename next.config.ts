@@ -1,9 +1,10 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: "export",
   reactStrictMode: true,
-  // DO NOT set: output: "export"
-  // Keep this file otherwise minimal.
+  experimental: {
+    appDir: true,
+  },
 };
 
 export default nextConfig;
